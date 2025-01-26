@@ -111,7 +111,7 @@ func GenerateThemeMap(iconsDir string) (map[string]Theme, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate theme map: %w", err)
+		return themeMap, fmt.Errorf("failed to generate theme map: %w", err)
 	}
 
 	return themeMap, nil

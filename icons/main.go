@@ -1,10 +1,17 @@
 package icons
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
+
+	basedir "github.com/MiracleOS-Team/libxdg-go/baseDir"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Subdir struct {
@@ -107,7 +114,16 @@ func findIconHelper(icon string, size, scale int, theme Theme, themeMap map[stri
 	for _, parentName := range theme.Parents {
 		parentTheme, exists := themeMap[parentName]
 		if !exists {
-			continue
+			parentTheme, exists = themeMap[strings.ToLower(parentName)]
+			if !exists {
+				parentTheme, exists = themeMap[strings.ToUpper(parentName)]
+				if !exists {
+					parentTheme, exists = themeMap[cases.Title(language.English, cases.Compact).String(parentName)]
+					if !exists {
+						continue
+					}
+				}
+			}
 		}
 		filename, err = findIconHelper(icon, size, scale, parentTheme, themeMap)
 		if err == nil {
@@ -115,6 +131,83 @@ func findIconHelper(icon string, size, scale int, theme Theme, themeMap map[stri
 		}
 	}
 	return "", errors.New("icon not found in theme or parents")
+}
+
+func FindIconDefaults(icon string, size, scale int, fallback string) (string, error) {
+
+	themeMap, err := CacheThemeMap(fmt.Sprintf("%v", basedir.GetXDGDirectory("cache")) + "/libxdg-icons.json")
+	if err != nil {
+		panic(err)
+	}
+
+	iconp, err := FindIcon(icon, size, scale, themeMap["MiracleOS"], themeMap)
+	if err != nil {
+		if fallback == "" {
+			return "", err
+		} else {
+			iconp, err = FindIconDefaults(fallback, size, scale, "")
+		}
+	}
+
+	return iconp, err
+
+}
+
+// CacheThemeMap caches the themeMap in a predefined file and generates it if it does not exist or if the cache is older than 24 hours.
+func CacheThemeMap(cacheFile string) (map[string]Theme, error) {
+	themeMap := make(map[string]Theme)
+
+	// Check if cache file exists and is not older than 24 hours
+	if fileExists(cacheFile) {
+		info, err := os.Stat(cacheFile)
+		if err != nil {
+			return nil, err
+		}
+		if time.Since(info.ModTime()) < 4*time.Hour {
+			file, err := os.Open(cacheFile)
+			if err != nil {
+				return nil, err
+			}
+			defer file.Close()
+
+			decoder := json.NewDecoder(file)
+			err = decoder.Decode(&themeMap)
+			if err != nil {
+				return nil, err
+			}
+			return themeMap, nil
+		}
+	}
+
+	// Generate themeMap if cache file does not exist or is older than 24 hours
+	for _, v := range basedir.GetXDGDirectory("dataDirs").([]string) {
+		if _, err := os.Stat(v + "/icons"); os.IsNotExist(err) {
+			continue
+		}
+		themeMapv, err := GenerateThemeMap(v + "/icons")
+		if err != nil {
+			return nil, err
+		}
+
+		for key, value := range themeMapv {
+			themeMap[key] = value
+		}
+	}
+
+	// Cache the generated themeMap
+	file, err := os.Create(cacheFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(themeMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return themeMap, nil
 }
 
 // FindIcon implements the main logic to find an icon.
@@ -125,7 +218,10 @@ func FindIcon(icon string, size, scale int, theme Theme, themeMap map[string]The
 	}
 	hicolorTheme, exists := themeMap["hicolor"]
 	if !exists {
-		return "", errors.New("hicolor theme not found")
+		hicolorTheme, exists = themeMap["Hicolor"]
+		if !exists {
+			return "", errors.New("hicolor theme not found")
+		}
 	}
 	filename, err = findIconHelper(icon, size, scale, hicolorTheme, themeMap)
 	if err == nil {

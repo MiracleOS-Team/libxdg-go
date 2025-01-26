@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	basedir "github.com/MiracleOS-Team/libxdg-go/baseDir"
+	"github.com/MiracleOS-Team/libxdg-go/icons"
 	"gopkg.in/ini.v1"
 )
 
@@ -108,14 +110,18 @@ func TranslateFieldWithLocale(key string, locale string, section *ini.Section) s
 	return key // Return the original key if no match
 }
 
-func ParseIconString(value string) string {
+func ParseIconString(value string) (string, error) {
 	if strings.HasPrefix(value, "/") {
-		return value
+		return value, nil
 	}
 	if strings.Contains(value, "/") {
-		return filepath.Join("/", value)
+		return filepath.Join("/", value), nil
 	}
-	return value
+	icon, err := icons.FindIconDefaults(value, 256, 1, "application-x-executable")
+	if err != nil {
+		panic(err)
+	}
+	return icon, err
 }
 
 // ReadDesktopFileWithLocale reads a .desktop file and prints key-value pairs with locale-based selection
@@ -132,7 +138,6 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 	// Iterate over sections and print key-value pairs with locale-based translation
 	for _, section := range cfg.SectionStrings() {
 		sectionObj := cfg.Section(section)
-		fmt.Printf("Section: [%s]\n", section)
 		for _, key := range sectionObj.KeyStrings() {
 			if !strings.HasSuffix(key, "]") {
 				if sectionObj.Name() == "Desktop Entry" {
@@ -150,7 +155,7 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 					case "Comment":
 						dfile.Comment = TranslateFieldWithLocale(key, locale, sectionObj)
 					case "Icon":
-						dfile.Icon = ParseIconString(sectionObj.Key(key).String())
+						dfile.Icon, _ = ParseIconString(sectionObj.Key(key).String())
 					case "Hidden":
 						dfile.Hidden, _ = sectionObj.Key(key).Bool()
 					case "OnlyShowIn":
@@ -187,7 +192,7 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 						dfile.ApplicationObject.SingleMainWindow, _ = sectionObj.Key(key).Bool()
 
 					}
-					fmt.Println(key, sectionObj.Key(key).String())
+
 				}
 
 			}
@@ -196,6 +201,22 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 	}
 
 	return dfile, nil
+}
+
+func ListAllApplications() ([]DesktopFile, error) {
+	apps := []DesktopFile{}
+	for _, dir := range basedir.GetXDGDirectory("dataDirs").([]string) {
+		if _, err := os.Stat(dir + "/applications"); os.IsNotExist(err) {
+			continue
+		}
+		app1, err := ListApplications(dir)
+		if err != nil {
+			return nil, err
+		}
+		apps = append(apps, app1...)
+	}
+
+	return apps, nil
 }
 
 // ListApplications traverses a directory and parses .desktop files to list applications
