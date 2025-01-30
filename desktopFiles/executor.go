@@ -133,9 +133,9 @@ func ExecuteDesktopFile(dfile DesktopFile, urls []string, loc string) error {
 	// Execute the command
 	var cmd *exec.Cmd
 	if dfile.ApplicationObject.Terminal {
-		args = []string{"-c", pathExecutable}
+		args = []string{"-e", strings.Join([]string{"\"", pathExecutable, "\""}, "")}
 		args = append(args, arguments...)
-		cmd = exec.Command("bash", args...)
+		cmd = exec.Command("alacritty", args...)
 	} else {
 		cmd = exec.Command(pathExecutable, arguments...)
 	}
