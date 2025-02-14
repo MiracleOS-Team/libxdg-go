@@ -43,7 +43,7 @@ type Daemon struct {
 	lockFile             *os.File
 	conn                 *dbus.Conn
 	mu                   sync.Mutex
-	notifications        map[uint32]Notification
+	Notifications        map[uint32]Notification
 	nextID               uint32
 	NotificationsChannel chan Notification
 	Logger               slog.Logger
@@ -60,7 +60,7 @@ func NewDaemon(config Config) *Daemon {
 	}
 	return &Daemon{
 		config:               config,
-		notifications:        make(map[uint32]Notification),
+		Notifications:        make(map[uint32]Notification),
 		nextID:               1,
 		NotificationsChannel: make(chan Notification, 10),
 		Logger:               *slog.New(slog.NewTextHandler(os.Stdout, nil)),
@@ -212,7 +212,7 @@ func (d *Daemon) Notify(appName string, replacesID uint32, appIcon string, summa
 
 	// Use the provided replacesID if valid.
 	id := replacesID
-	if id == 0 || d.notifications[id].ID == 0 {
+	if id == 0 || d.Notifications[id].ID == 0 {
 		id = d.nextID
 		d.nextID++
 	}
@@ -228,7 +228,7 @@ func (d *Daemon) Notify(appName string, replacesID uint32, appIcon string, summa
 		ExpireTimeout: expireTimeout,
 		Timestamp:     time.Now(),
 	}
-	d.notifications[id] = notification
+	d.Notifications[id] = notification
 
 	// In a complete daemon, you might display the notification in a UI,
 	// forward it to another handler, or log it.
@@ -249,8 +249,8 @@ func (d *Daemon) CloseNotification(id uint32) *dbus.Error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if _, exists := d.notifications[id]; exists {
-		delete(d.notifications, id)
+	if _, exists := d.Notifications[id]; exists {
+		delete(d.Notifications, id)
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 3)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
 	}
@@ -261,8 +261,8 @@ func (d *Daemon) CloseNotificationAsUser(id uint32) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if _, exists := d.notifications[id]; exists {
-		delete(d.notifications, id)
+	if _, exists := d.Notifications[id]; exists {
+		delete(d.Notifications, id)
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 2)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
 
