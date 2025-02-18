@@ -118,9 +118,6 @@ func ParseIconString(value string) (string, error) {
 		return filepath.Join("/", value), nil
 	}
 	icon, err := icons.FindIconDefaults(value, 256, 1, "application-x-executable")
-	if err != nil {
-		panic(err)
-	}
 	return icon, err
 }
 
