@@ -2,5 +2,5 @@ A golang library to handle freedesktop specifications
 
 Left To implement:
 * Respect TryExec, StartupNotify
-* Implement preferences for icon lookup
 
+**Please note that this version isn't stable and the api can change at any time**

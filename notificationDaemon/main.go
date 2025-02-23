@@ -37,6 +37,13 @@ type Notification struct {
 	Timestamp     time.Time
 }
 
+type NotificationEvent struct {
+	Notification Notification
+	Created      bool
+	Modified     bool
+	Deleted      bool
+}
+
 // Daemon implements the org.freedesktop.Notifications interface.
 type Daemon struct {
 	config               Config
@@ -45,7 +52,7 @@ type Daemon struct {
 	mu                   sync.Mutex
 	Notifications        map[uint32]Notification
 	nextID               uint32
-	NotificationsChannel chan Notification
+	NotificationsChannel chan NotificationEvent
 	Logger               slog.Logger
 }
 
@@ -62,7 +69,7 @@ func NewDaemon(config Config) *Daemon {
 		config:               config,
 		Notifications:        make(map[uint32]Notification),
 		nextID:               1,
-		NotificationsChannel: make(chan Notification, 10),
+		NotificationsChannel: make(chan NotificationEvent, 10),
 		Logger:               *slog.New(slog.NewTextHandler(os.Stdout, nil)),
 	}
 }
@@ -235,7 +242,14 @@ func (d *Daemon) Notify(appName string, replacesID uint32, appIcon string, summa
 
 	slog.Debug(strings.Join([]string{"Received notification ", strconv.Itoa(int(id)), ": ", summary, " - ", body}, "\n"))
 
-	d.NotificationsChannel <- notification
+	notificationEvent := NotificationEvent{
+		Notification: notification,
+		Created:      replacesID == 0,
+		Modified:     replacesID != 0,
+		Deleted:      false,
+	}
+
+	d.NotificationsChannel <- notificationEvent
 
 	return id, nil
 }
@@ -253,6 +267,15 @@ func (d *Daemon) CloseNotification(id uint32) *dbus.Error {
 		delete(d.Notifications, id)
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 3)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
+
+		notificationEvent := NotificationEvent{
+			Notification: d.Notifications[id],
+			Created:      false,
+			Modified:     false,
+			Deleted:      true,
+		}
+
+		d.NotificationsChannel <- notificationEvent
 	}
 	return nil
 }
@@ -266,6 +289,14 @@ func (d *Daemon) CloseNotificationAsUser(id uint32) error {
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 2)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
 
+		notificationEvent := NotificationEvent{
+			Notification: d.Notifications[id],
+			Created:      false,
+			Modified:     false,
+			Deleted:      true,
+		}
+
+		d.NotificationsChannel <- notificationEvent
 	}
 	return nil
 }
