@@ -201,7 +201,8 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 }
 
 func ListAllApplications() ([]DesktopFile, error) {
-	apps := []DesktopFile{}
+	apps := make(map[string]DesktopFile)
+
 	for _, dir := range basedir.GetXDGDirectory("dataDirs").([]string) {
 		if _, err := os.Stat(dir + "/applications"); os.IsNotExist(err) {
 			continue
@@ -210,15 +211,24 @@ func ListAllApplications() ([]DesktopFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		apps = append(apps, app1...)
+
+		for nm, app := range app1 {
+			apps[nm] = app
+		}
 	}
 
-	return apps, nil
+	fapps := []DesktopFile{}
+
+	for _, app := range apps {
+		fapps = append(fapps, app)
+	}
+
+	return fapps, nil
 }
 
 // ListApplications traverses a directory and parses .desktop files to list applications
-func ListApplications(directory string) ([]DesktopFile, error) {
-	var apps []DesktopFile
+func ListApplications(directory string) (map[string]DesktopFile, error) {
+	var apps = make(map[string]DesktopFile)
 
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -228,7 +238,15 @@ func ListApplications(directory string) ([]DesktopFile, error) {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".desktop") {
 			desktopFile, parseErr := ReadDesktopFile(path)
 			if parseErr == nil && desktopFile.Type == "Application" && !desktopFile.NoDisplay && !desktopFile.Hidden {
-				apps = append(apps, desktopFile)
+				dName := strings.Replace(strings.Replace(info.Name(), directory, "", 1), "/", "-", -1)
+				apps[dName] = desktopFile
+			}
+		} else if info.IsDir() {
+			tapps, err := ListApplications(path)
+			if err == nil {
+				for nm, app := range tapps {
+					apps[info.Name()+"-"+nm] = app
+				}
 			}
 		}
 		return nil
