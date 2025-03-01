@@ -287,7 +287,7 @@ func (d *Daemon) CloseNotificationAsUser(id uint32) error {
 	if _, exists := d.Notifications[id]; exists {
 		delete(d.Notifications, id)
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 2)
-		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
+		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, ""))
 
 		notificationEvent := NotificationEvent{
 			Notification: d.Notifications[id],

@@ -1,6 +1,7 @@
 package basedir
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -42,5 +43,6 @@ func getEnvOrDefaultList(envVar, defaultValue string) []string {
 	if value == "" {
 		value = defaultValue
 	}
+	fmt.Println(strings.Split(value, ":"))
 	return strings.Split(value, ":")
 }

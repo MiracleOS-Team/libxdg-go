@@ -2,6 +2,7 @@ package desktopFiles
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -207,7 +208,8 @@ func ListAllApplications() ([]DesktopFile, error) {
 		if _, err := os.Stat(dir + "/applications"); os.IsNotExist(err) {
 			continue
 		}
-		app1, err := ListApplications(dir)
+		slog.Info("Processing directory: ", dir+"/applications")
+		app1, err := ListApplications(dir + "/applications")
 		if err != nil {
 			return nil, err
 		}
@@ -215,6 +217,7 @@ func ListAllApplications() ([]DesktopFile, error) {
 		for nm, app := range app1 {
 			apps[nm] = app
 		}
+		slog.Info("Finished processing directory: ", dir+"/applications")
 	}
 
 	fapps := []DesktopFile{}
@@ -236,18 +239,21 @@ func ListApplications(directory string) (map[string]DesktopFile, error) {
 		}
 
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".desktop") {
+			slog.Debug("Processing file: ", path)
 			desktopFile, parseErr := ReadDesktopFile(path)
 			if parseErr == nil && desktopFile.Type == "Application" && !desktopFile.NoDisplay && !desktopFile.Hidden {
 				dName := strings.Replace(strings.Replace(info.Name(), directory, "", 1), "/", "-", -1)
 				apps[dName] = desktopFile
 			}
-		} else if info.IsDir() {
+		} else if info.IsDir() && path != directory {
+			slog.Debug("Processing subdirectory: ", path)
 			tapps, err := ListApplications(path)
 			if err == nil {
 				for nm, app := range tapps {
 					apps[info.Name()+"-"+nm] = app
 				}
 			}
+			slog.Debug("Finished processing subdirectory: ", path)
 		}
 		return nil
 	})
