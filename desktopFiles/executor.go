@@ -139,9 +139,6 @@ func ExecuteDesktopFile(dfile DesktopFile, urls []string, loc string) error {
 	} else {
 		cmd = exec.Command(pathExecutable, arguments...)
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
 	if dfile.ApplicationObject.Path == "" {
 		dfile.ApplicationObject.Path = "/"
 	}
