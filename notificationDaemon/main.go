@@ -175,7 +175,22 @@ func (d *Daemon) Start() error {
 					},
 				},
 				Properties: []introspect.Property{},
-				Signals:    []introspect.Signal{},
+				Signals: []introspect.Signal{
+					{
+						Name: "NotificationClosed",
+						Args: []introspect.Arg{
+							{Name: "id", Type: "u", Direction: "in"},
+							{Name: "reason", Type: "u", Direction: "in"},
+						},
+					},
+					{
+						Name: "ActionInvoked",
+						Args: []introspect.Arg{
+							{Name: "id", Type: "u", Direction: "in"},
+							{Name: "action_key", Type: "s", Direction: "in"},
+						},
+					},
+				},
 			},
 			introspect.IntrospectData,
 		},
@@ -207,7 +222,7 @@ func (d *Daemon) GetServerInformation() (string, string, string, string, *dbus.E
 // GetCapabilities returns the capabilities supported by the notification server.
 func (d *Daemon) GetCapabilities() ([]string, *dbus.Error) {
 	// Example capabilities; adjust to your implementation.
-	caps := []string{"body", "actions", "persistence"}
+	caps := []string{"body", "actions"}
 	return caps, nil
 }
 
@@ -264,7 +279,7 @@ func (d *Daemon) CloseNotification(id uint32) *dbus.Error {
 	defer d.mu.Unlock()
 
 	if _, exists := d.Notifications[id]; exists {
-		delete(d.Notifications, id)
+
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 3)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, "\n"))
 
@@ -274,6 +289,7 @@ func (d *Daemon) CloseNotification(id uint32) *dbus.Error {
 			Modified:     false,
 			Deleted:      true,
 		}
+		delete(d.Notifications, id)
 
 		d.NotificationsChannel <- notificationEvent
 	}
@@ -285,7 +301,7 @@ func (d *Daemon) CloseNotificationAsUser(id uint32) error {
 	defer d.mu.Unlock()
 
 	if _, exists := d.Notifications[id]; exists {
-		delete(d.Notifications, id)
+
 		d.conn.Emit(dbus.ObjectPath("/org/freedesktop/Notifications"), "org.freedesktop.Notifications.NotificationClosed", id, 2)
 		slog.Debug(strings.Join([]string{"User closed notification ", strconv.Itoa(int(id))}, ""))
 
@@ -295,6 +311,7 @@ func (d *Daemon) CloseNotificationAsUser(id uint32) error {
 			Modified:     false,
 			Deleted:      true,
 		}
+		delete(d.Notifications, id)
 
 		d.NotificationsChannel <- notificationEvent
 	}
