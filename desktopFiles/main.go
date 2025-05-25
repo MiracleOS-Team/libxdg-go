@@ -149,19 +149,19 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 					case "GenericName":
 						dfile.GenericName = TranslateFieldWithLocale(key, locale, sectionObj)
 					case "NoDisplay":
-						dfile.NoDisplay, _ = sectionObj.Key(key).Bool()
+						dfile.NoDisplay, err = sectionObj.Key(key).Bool()
 					case "Comment":
 						dfile.Comment = TranslateFieldWithLocale(key, locale, sectionObj)
 					case "Icon":
-						dfile.Icon, _ = ParseIconString(sectionObj.Key(key).String())
+						dfile.Icon, err = ParseIconString(sectionObj.Key(key).String())
 					case "Hidden":
-						dfile.Hidden, _ = sectionObj.Key(key).Bool()
+						dfile.Hidden, err = sectionObj.Key(key).Bool()
 					case "OnlyShowIn":
 						dfile.OnlyShowIn = sectionObj.Key(key).Strings(";")
 					case "NotShowIn":
 						dfile.NotShowIn = sectionObj.Key(key).Strings(";")
 					case "DBusActivatable":
-						dfile.DBusActivatable, _ = sectionObj.Key(key).Bool()
+						dfile.DBusActivatable, err = sectionObj.Key(key).Bool()
 					case "TryExec":
 						dfile.ApplicationObject.TryExec = sectionObj.Key(key).String()
 					case "Exec":
@@ -169,7 +169,7 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 					case "Path":
 						dfile.ApplicationObject.Path = sectionObj.Key(key).String()
 					case "Terminal":
-						dfile.ApplicationObject.Terminal, _ = sectionObj.Key(key).Bool()
+						dfile.ApplicationObject.Terminal, err = sectionObj.Key(key).Bool()
 					case "Actions":
 						dfile.ApplicationObject.Actions = sectionObj.Key(key).Strings(";")
 					case "MimeType":
@@ -179,16 +179,19 @@ func ReadDesktopFile(filePath string) (DesktopFile, error) {
 					case "Keywords":
 						dfile.ApplicationObject.Keywords = []string{TranslateFieldWithLocale(key, locale, sectionObj)}
 					case "StartupNotify":
-						dfile.ApplicationObject.StartupNotify, _ = sectionObj.Key(key).Bool()
+						dfile.ApplicationObject.StartupNotify, err = sectionObj.Key(key).Bool()
 					case "StartupWMClass":
 						dfile.ApplicationObject.StartupWMClass = sectionObj.Key(key).String()
 					case "URL":
 						dfile.LinkObject.URL = sectionObj.Key(key).String()
 					case "PrefersNonDefaultGPU":
-						dfile.ApplicationObject.PrefersNonDefaultGPU, _ = sectionObj.Key(key).Bool()
+						dfile.ApplicationObject.PrefersNonDefaultGPU, err = sectionObj.Key(key).Bool()
 					case "SingleMainWindow":
-						dfile.ApplicationObject.SingleMainWindow, _ = sectionObj.Key(key).Bool()
+						dfile.ApplicationObject.SingleMainWindow, err = sectionObj.Key(key).Bool()
 
+					}
+					if err != nil {
+						return DesktopFile{}, err
 					}
 
 				}
